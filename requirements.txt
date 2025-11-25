@@ -1,0 +1,14 @@
+pandas
+numpy
+fuzzy
+SQLAlchemy
+psycopg2-binary
+pyarrow
+fastparquet
+
+jupyter
+ipykernel
+nbformat
+matplotlib
+
+folium

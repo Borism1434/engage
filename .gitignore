@@ -1,0 +1,21 @@
+data/pledge_data.csv
+data/.DS_Store
+.DS_Store
+__pycache__/db.cpython-313.pyc
+env.sh
+metrics_modular.json
+metrics_modular.json
+metrics_modular.json
+matching/negatives/__pycache__/hard_negatives.cpython-313.pyc
+matching/features/__pycache__/address_features.cpython-313.pyc
+matching/negatives/__pycache__/hard_negatives.cpython-313.pyc
+matching/features/__pycache__/feature_builder.cpython-313.pyc
+*.csv
+*json
+*.parquet
+*.csv
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

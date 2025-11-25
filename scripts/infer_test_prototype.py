@@ -32,11 +32,11 @@ def generate_candidate_pairs(attempts_df, vf_df):
     return candidates
 
 def main():
-    attempts = load_attempts("/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export.csv")
+    attempts = load_attempts("/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export_no_na.csv")
 
     # Load voterfile from remote database
-    query = "SELECT * FROM voterfile.election_detail_2018 WHERE county = 'DAD';"
-    vf_2018 = db.run_query(query)
+    query = "SELECT * FROM voterfile.election_detail_2024 WHERE county = 'DAD';"
+    vf_extract = db.run_query(query)
 
     print([repr(c) for c in attempts.columns])
 
@@ -52,7 +52,7 @@ def main():
     "voting_zipcode": "zip_raw_att",
     })  
 
-    vf_2018 = vf_2018.rename(columns={
+    vf_extract = vf_extract.rename(columns={
     "first_name": "first_name_vf",
     "last_name": "last_name_vf",
     "residence_zipcode": "zip_raw_vf",
@@ -62,20 +62,18 @@ def main():
     print(attempts[["first_name_att", "last_name_att", "dob_raw_att", "zip_raw_att"]].head())
     print("Columns in attempts after rename:", attempts.columns.tolist())
 
-   
-
 
     # Normalize names, DOBs, zips
-    attempts, vf_2018 = add_normalized_keys(attempts, vf_2018)
+    attempts, vf_extract = add_normalized_keys(attempts, vf_extract)
 
     # Generate candidate pairs blockingly
-    candidates = generate_candidate_pairs(attempts, vf_2018)
+    candidates = generate_candidate_pairs(attempts, vf_extract)
 
     # Compute features for candidates
     X, _ = add_features(candidates)
 
     # Load trained model and predict
-    model = joblib.load("model.pkl")
+    model = joblib.load("logreg_model.pkl")
     candidates["match_prob"] = model.predict_proba(X)[:, 1]
 
     # Filter by threshold

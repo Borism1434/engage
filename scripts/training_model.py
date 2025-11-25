@@ -1,30 +1,42 @@
+import os
 import pandas as pd
+import json
+import joblib
+from tqdm import tqdm
 from script_helper import add_repo_root_to_syspath; add_repo_root_to_syspath()
-from matching.loaders.load_attempts import load_attempts, load_matches # adapt as needed
+from matching.loaders.load_attempts import load_attempts, load_matches
 from matching.gold.gold_pairs import build_gold_pairs, add_normalized_keys
 from matching.negatives.hard_negatives import generate_hard_negatives
 from matching.features.feature_builder import add_features
 from matching.modeling.train_eval import train_and_evaluate
 import matching.utils.db as db
-import json
-import joblib
 
-def main():
-    # 1. Load data (using your loader, DB module, or pandas if not yet modularized)
+def run_query_with_progress(sql):
+    sql = sql.strip().rstrip(';')
+    count_sql = f"SELECT COUNT(*) FROM ({sql}) AS subquery"
+    total_rows = db.run_query(count_sql).iloc[0, 0]
+    print(f"Total rows to read: {total_rows}")
+
+    print("Running full query, please wait...")
+    df = db.run_query(sql)
+    print(f"Query finished. Read {len(df)} rows.")
+    return df
+
+def main(voterfile_sql="SELECT * FROM voterfile.election_detail_2018 WHERE county = 'DAD'", model_dir="models"):
+    os.makedirs(model_dir, exist_ok=True)
     matches = load_matches("/Users/borismartinez/Documents/GitHub/engage/data/vr_match_export.csv")
-    attempts = load_attempts("/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export.csv")
-    
+    attempts = load_attempts("/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export_no_na.csv")
     pledges = pd.read_csv("/Users/borismartinez/Documents/GitHub/engage/data/pledge_data.csv")
-
-    vf_2018 = db.run_query("SELECT * FROM voterfile.election_detail_2018 WHERE county = 'DAD';")
+    
+    # Load voterfile dataframe with progress bar
+    vf_df = run_query_with_progress(voterfile_sql)
 
     att = attempts.merge(
-    matches[["registration_form_id", "type_code", "confidence_score"]],
-    on="registration_form_id",
-    how="inner",
-)
+        matches[["registration_form_id", "type_code", "confidence_score"]],
+        on="registration_form_id",
+        how="inner",
+    )
 
-    # Rename columns in attempts and voterfile for normalization
     att = att.rename(columns={
         "first_name": "first_name_att",
         "last_name": "last_name_att",
@@ -32,20 +44,17 @@ def main():
         "voting_zipcode": "zip_raw_att",
     })
 
-    vf_2018 = vf_2018.rename(columns={
+    vf_df = vf_df.rename(columns={
         "first_name": "first_name_vf",
         "last_name": "last_name_vf",
         "residence_zipcode": "zip_raw_vf",
         "birth_date": "dob_raw_vf",
     })
 
-    # Normalize only attempts and vf_2018
-    att, vf_2018 = add_normalized_keys(att, vf_2018)
+    att, vf_df = add_normalized_keys(att, vf_df)
 
-    # Build gold pairs using normalized attempts and voterfile
-    pos_df, vf_small, att_small = build_gold_pairs(att, vf_2018)
+    pos_df, vf_small, att_small = build_gold_pairs(att, vf_df)
 
-    # Continue with negatives, feature building, training etc.
     negatives = generate_hard_negatives(pos_df, vf_small)
     train_df = pd.concat([pos_df, negatives], ignore_index=True)
     X, y = add_features(train_df)
@@ -54,8 +63,9 @@ def main():
     print("Model performance:")
     print(metrics)
 
-    joblib.dump(model, "model.pkl")
-    print("Model saved as model.pkl")
+    model_path = os.path.join(model_dir, "model.pkl")
+    joblib.dump(model, model_path)
+    print(f"Model saved as {model_path}")
 
     print("\n=== POSITIVE PAIRS DATA ===")
     print(f"Columns: {pos_df.columns.tolist()}")
@@ -71,10 +81,9 @@ def main():
     print(f"Feature shape: {X.shape}")
     print(f"Target distribution:\n{y.value_counts()}")
 
-    pos_df.to_csv("pos_df_modular.csv", index=False)
-    train_df.to_csv("train_df_modular.csv", index=False)
+    pos_df.to_parquet("pos_df_modular.csv", index=False)
+    train_df.to_parquet("train_df_modular.csv", index=False)
 
-    
     with open("metrics_modular.json", "w") as f:
         json.dump(metrics, f, indent=2)
 

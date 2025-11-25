@@ -105,9 +105,9 @@ def stream_inference(attempts_path, db_engine, sql, model_path, chunksize=5000):
 if __name__ == "__main__":
     import matching.utils.db as db
     db_engine = db.get_engine()
-    attempts_path = "/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export.csv"
+    attempts_path = "/Users/borismartinez/Documents/GitHub/engage/data/vr_blocks_export_no_na.csv"
     sql = "SELECT * FROM voterfile.election_detail_2024 WHERE county = 'DAD'"
-    model_path = "model.pkl"
+    model_path = "models/model.pkl"
     chunksize = 5000
 
     # Optional: clear chunk files before running

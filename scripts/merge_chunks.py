@@ -10,9 +10,9 @@ def get_chunk_num(filename):
     return int(match.group(1)) if match else -1
 
 def merge_chunk_csvs(
-    output_path="predicted_matches_full.parquet",
-    best_matches_path="predicted_best_matches.parquet",
-    chunk_folder="/Users/borismartinez/Documents/GitHub/engage/chunk_folder",
+    output_path="predicted_matches_full_prototype.parquet",
+    best_matches_path="predicted_best_matches_prototype.parquet",
+    chunk_folder="/Users/borismartinez/Documents/GitHub/engage/chunk_folder/chunk_prototype",
     chunk_pattern="predicted_matches_chunk_*.csv"
 ):
     """
